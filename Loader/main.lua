@@ -3,17 +3,17 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 
-local urlVip = "https://raw.githubusercontent.com/WataXScript/VerifikasiScWata/refs/heads/main/Loader/vip.txt"
-local urlSatuan = "https://raw.githubusercontent.com/WataXScript/VerifikasiScWata/refs/heads/main/Loader/10.txt"
+local urlVip = "https://raw.githubusercontent.com/putraborz/VerifikasiScWata/refs/heads/main/Loader/vip.txt"
+local urlSatuan = "https://raw.githubusercontent.com/putraborz/VerifikasiScWata/refs/heads/main/Loader/10.txt"
 
 local successUrls = {
-    "https://raw.githubusercontent.com/WataXScript/WataXMountAtin/main/Loader/WataX.lua",
-    "https://raw.githubusercontent.com/WataXScript/WataXStecuMount43/refs/heads/main/Loader/mainmap672.lua"
+    "https://raw.githubusercontent.com/putraborz/WataXMountAtin/main/Loader/WataX.lua",
+    "https://raw.githubusercontent.com/putraborz/WataXStecuMount43/refs/heads/main/Loader/mainmap672.lua"
 }
 
 
-local TIKTOK_LINK = "https://www.tiktok.com/@wataxsc"
-local DISCORD_LINK = "https://discord.gg/tfNqRQsqHK"
+local TIKTOK_LINK = "https://www.tiktok.com/"
+local DISCORD_LINK = "https://discord.gg/"
 
 local function fetch(url)
     local ok, res = pcall(function()
@@ -147,10 +147,10 @@ Instance.new("UICorner", discordBtn).CornerRadius = UDim.new(0, 8)
 local function copyToClipboard(link)
     if setclipboard then
         pcall(setclipboard, link)
-        notify("WataX", "Link disalin ke clipboard", 3)
+        notify("Lex", "Link disalin ke clipboard", 3)
         return true
     else
-        notify("WataX", "Fitur salin tidak tersedia di executor ini", 4)
+        notify("Lex", "Fitur salin tidak tersedia di executor ini", 4)
         print("Link (copy manual):", link)
         return false
     end
