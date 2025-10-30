@@ -1,4 +1,4 @@
--- LEXHOST Loader - Cyber Blue Edition (Final)
+-- LEXHOST Loader - Cyber Blue Edition (Final, centered + success message only)
 -- Paste ini ke LocalScript di StarterGui
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
@@ -8,7 +8,7 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
--- URL verifikasi dan loader (tetap seperti semula)
+-- URL verifikasi (tetap ada tapi tidak akan di-load modul setelah verifikasi)
 local urlVip = "https://raw.githubusercontent.com/putraborz/VerifikasiScWata/refs/heads/main/Loader/vip.txt"
 local urlSatuan = "https://raw.githubusercontent.com/putraborz/VerifikasiScWata/refs/heads/main/Loader/10.txt"
 
@@ -73,11 +73,11 @@ gui.Name = "LEXHOST_Load"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
--- container frame
+-- container frame (CENTERED)
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0, 360, 0, 230)
-frame.Position = UDim2.new(0.5, -180, 0.5, -115)
-frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.Position = UDim2.new(0.5, 0, 0.5, 0)             -- tepat di tengah
+frame.AnchorPoint = Vector2.new(0.5, 0.5)               -- anchor tengah
 frame.BackgroundColor3 = Color3.fromRGB(18, 24, 34) -- very dark
 frame.BackgroundTransparency = 1
 frame.BorderSizePixel = 0
@@ -97,7 +97,7 @@ glow.AnchorPoint = Vector2.new(0.5, 0.5)
 glow.Position = UDim2.new(0.5, 0, 0.5, 0)
 glow.Size = UDim2.new(1.15, 0, 1.15, 0)
 glow.BackgroundTransparency = 1
-glow.Image = "rbxassetid://243660447" -- generic soft gradient circle (works as subtle glow)
+glow.Image = "rbxassetid://243660447"
 glow.ImageTransparency = 0.9
 glow.ZIndex = 0
 
@@ -125,9 +125,8 @@ avatar.Size = UDim2.new(0, 72, 0, 72)
 avatar.Position = UDim2.new(0, 26, 0, 56)
 avatar.BackgroundTransparency = 1
 avatar.ZIndex = 2
-avatar.Image = "rbxassetid://112840507" -- fallback while fetching
+avatar.Image = "rbxassetid://112840507"
 
--- avatar rounded
 local avtCorner = Instance.new("UICorner", avatar)
 avtCorner.CornerRadius = UDim.new(0, 12)
 
@@ -290,7 +289,7 @@ closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- verification routine (kept as original logic)
+-- verification routine (kept logic, but on success show message instead of loading modules)
 local function doVerify()
     status.Text = "🔍 Memeriksa daftar pengguna..."
     verifyBtn.Active = false
@@ -307,20 +306,17 @@ local function doVerify()
     end
 
     if result then
-        status.Text = "✅ Terdaftar — Pengguna LEXHOST..."
+        -- SUCCESS: show the requested message (no module loading)
+        status.Text = "✅ Terverivikasi - Pengguna LEXHOST"
         _G.LEXHOST_Access = true
-        task.wait(0.8)
 
-        for _, url in ipairs(successUrls) do
-            pcall(function()
-                loadstring(game:HttpGet(url))()
-            end)
-        end
-
-        TweenService:Create(frame, TweenInfo.new(0.45), {BackgroundTransparency = 1}):Play()
+        -- optional: short success pulse then close UI
+        TweenService:Create(titleStroke, TweenInfo.new(0.45, Enum.EasingStyle.Quad), {Transparency = 0}):Play()
+        task.wait(1.2)
+        TweenService:Create(frame, TweenInfo.new(0.45, Enum.EasingStyle.Quad), {BackgroundTransparency = 1}):Play()
         task.wait(0.45)
         if blur and blur.Parent then blur:Destroy() end
-        gui:Destroy()
+        if gui and gui.Parent then gui:Destroy() end
     else
         status.Text = "❌ Kamu belum terdaftar di LEXHOST."
         _G.LEXHOST_Access = false
@@ -330,12 +326,12 @@ end
 
 verifyBtn.MouseButton1Click:Connect(doVerify)
 
--- subtle entrance animation for entire frame + glow pop
+-- subtle entrance animation for entire frame + glow pop (centered)
 frame.BackgroundTransparency = 1
-frame.Size = UDim2.new(0, 340, 0, 220)
-frame.Position = UDim2.new(0.5, -180, 0.5, -135)
+frame.Size = UDim2.new(0, 360, 0, 230)
+frame.Position = UDim2.new(0.5, 0, 0.5, -30) -- start slightly up
 TweenService:Create(frame, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-    Position = UDim2.new(0.5, -180, 0.5, -115),
+    Position = UDim2.new(0.5, 0, 0.5, 0), -- animate to exact center
     BackgroundTransparency = 0
 }):Play()
 TweenService:Create(glow, TweenInfo.new(0.6, Enum.EasingStyle.Quad), {ImageTransparency = 0.92}):Play()
