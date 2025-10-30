@@ -307,7 +307,7 @@ local function doVerify()
     end
 
     if result then
-        status.Text = "✅ Terdaftar — memuat modul..."
+        status.Text = "✅ Terdaftar — Pengguna LEXHOST..."
         _G.LEXHOST_Access = true
         task.wait(0.8)
 
