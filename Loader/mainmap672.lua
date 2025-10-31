@@ -1,15 +1,12 @@
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local hrp
 
-
 local ROUTE_LINKS = {
     "https://raw.githubusercontent.com/putraborz/WataXScIni/refs/heads/main/100.lua",
 }
-
 
 local routes = {}
 local animConn
@@ -17,7 +14,6 @@ local isMoving = false
 local frameTime = 1/30
 local playbackRate = 1
 local isReplayRunning = false
-
 
 for i, link in ipairs(ROUTE_LINKS) do
     if link ~= "" then
@@ -31,14 +27,12 @@ for i, link in ipairs(ROUTE_LINKS) do
 end
 if #routes == 0 then warn("Tidak ada route valid ditemukan.") return end
 
-
 local function refreshHRP(char)
     if not char then char = player.Character or player.CharacterAdded:Wait() end
     hrp = char:WaitForChild("HumanoidRootPart")
 end
 player.CharacterAdded:Connect(refreshHRP)
 if player.Character then refreshHRP(player.Character) end
-
 
 local function setupMovement(char)
     task.spawn(function()
@@ -49,9 +43,8 @@ local function setupMovement(char)
         local root = char:WaitForChild("HumanoidRootPart", 5)
         if not humanoid or not root then return end
 
-        -- ✅ Tambahan stop kalau mati + update tombol UI
         humanoid.Died:Connect(function()
-            print("[WataX] Karakter mati, replay otomatis berhenti.")
+            print("[LEX HOST] Karakter mati, replay otomatis berhenti.")
             isReplayRunning = false
             stopMovement()
             isRunning = false
@@ -67,22 +60,18 @@ local function setupMovement(char)
 
         animConn = RunService.RenderStepped:Connect(function()
             if not isMoving then return end
-
-            -- otomatis perbarui HRP jika ganti karakter / respawn
             if not hrp or not hrp.Parent or not hrp:IsDescendantOf(workspace) then
                 if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                     hrp = player.Character:FindFirstChild("HumanoidRootPart")
                     root = hrp
                 else
-                    return -- skip frame kalau belum siap
+                    return
                 end
             end
-
             if not humanoid or humanoid.Health <= 0 then return end
 
             local direction = root.Position - lastPos
             local dist = direction.Magnitude
-
             if dist > 0.01 then
                 humanoid:Move(direction.Unit * math.clamp(dist * 5, 0, 1), false)
             else
@@ -107,7 +96,6 @@ player.CharacterAdded:Connect(function(char)
     refreshHRP(char)
     setupMovement(char)
 end)
-
 if player.Character then
     refreshHRP(player.Character)
     setupMovement(player.Character)
@@ -115,7 +103,6 @@ end
 
 local function startMovement() isMoving=true end
 local function stopMovement() isMoving=false end
-
 
 local DEFAULT_HEIGHT = 2.9
 local function getCurrentHeight()
@@ -201,13 +188,12 @@ local function stopRoute()
     stopMovement()
 end
 
-
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name="WataXReplayUI"
+screenGui.Name="LEXHOST_UI"
 screenGui.Parent=game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 130) -- frame pas
+frame.Size = UDim2.new(0, 220, 0, 130)
 frame.Position = UDim2.new(0.05,0,0.75,0)
 frame.BackgroundColor3 = Color3.fromRGB(50,30,70)
 frame.BackgroundTransparency = 0.3
@@ -222,24 +208,21 @@ glow.Color = Color3.fromRGB(180,120,255)
 glow.Thickness = 2
 glow.Transparency = 0.4
 
-
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(0.75,0,0,28)
 title.Position = UDim2.new(0.05,0,0,4)
-title.Text = "WataX Script"
+title.Text = "LEX HOST"
 title.Font = Enum.Font.GothamBold
 title.TextScaled = true
 title.BackgroundTransparency = 0.3
 title.BackgroundColor3 = Color3.fromRGB(70,40,120)
 Instance.new("UICorner", title).CornerRadius = UDim.new(0,12)
 
-
 local hue = 0
 RunService.RenderStepped:Connect(function()
     hue = (hue + 0.5) % 360
     title.TextColor3 = Color3.fromHSV(hue/360,1,1)
 end)
-
 
 local closeBtn = Instance.new("TextButton", frame)
 closeBtn.Size = UDim2.new(0,28,0,28)
@@ -266,7 +249,6 @@ end)
 closeBtn.MouseButton1Click:Connect(function()
     screenGui:Destroy()
 end)
-
 
 local toggleBtn = Instance.new("TextButton", frame)
 toggleBtn.Size = UDim2.new(0.8,0,0.25,0)
@@ -303,7 +285,6 @@ toggleBtn.MouseButton1Click:Connect(function()
         stopRoute()
     end
 end)
-
 
 local speedLabel = Instance.new("TextLabel", frame)
 speedLabel.Size = UDim2.new(0.35,0,0.2,0)
