@@ -1,371 +1,434 @@
--- LEXHOST Loader - Cyber Blue Edition (Final)
--- Paste ini ke LocalScript di StarterGui
+-- LEXHOST Loader (FINAL - perbaikan verifikasi + tombol X + judul)
+-- Fitur: blur halus saat verifikasi, cinematic FX saat sukses, tombol close (X), judul "LEX HOST PROJECT"
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
-local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
-
+local Debris = game:GetService("Debris")
+local Lighting = game:GetService("Lighting")
+local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
+local cam = workspace.CurrentCamera
 
--- URL verifikasi dan loader (tetap seperti semula)
+-- URLs verifikasi (tetap seperti semula)
 local urlVip = "https://raw.githubusercontent.com/putraborz/VerifikasiScWata/refs/heads/main/Loader/vip.txt"
-local urlSatuan = "https://raw.githubusercontent.com/putraborz/VerifikasiScWata/refs/heads/main/Loader/10.txt"
+local urlSatuan = "https://raw.githubusercontent.com/putraborz/VerifikasiScWata/refs/heads/main/Loader/15.txt"
 
 local successUrls = {
     "https://raw.githubusercontent.com/putraborz/WataXMountAtin/main/Loader/WataX.lua",
-    "https://raw.githubusercontent.com/putraborz/WataXStecuMount43/refs/heads/main/Loader/mainmap672.lua"
+    "https://raw.githubusercontent.com/putraborz/WataXMountSalvatore/main/Loader/mainmap2.lua"
 }
 
-local TIKTOK_LINK = "https://www.tiktok.com/"
-local DISCORD_LINK = "https://discord.gg/"
-
--- helper fetch
+-- helper fetch yg lebih toleran (pcall sudah ada tapi jaga lagi)
 local function fetch(url)
+    if not url then return nil end
     local ok, res = pcall(function()
         return game:HttpGet(url, true)
     end)
-    return ok and res or nil
+    if not ok or not res then
+        return nil
+    end
+    return tostring(res)
 end
 
--- cek daftar verifikasi
+-- isVerified: cari nama (case-insensitive) pada tiap baris file
 local function isVerified(uname)
+    if not uname then return false end
     local vip = fetch(urlVip)
     local sat = fetch(urlSatuan)
-    if not vip or not sat then return false end
-    uname = uname:lower()
+    if not vip and not sat then
+        return false -- gagal ambil daftar
+    end
+    uname = tostring(uname):lower()
+
     local function checkList(list)
+        if not list then return false end
         for line in list:gmatch("[^\r\n]+") do
+            -- hapus komentar setelah -- jika ada, lalu trim
             local nameOnly = line:match("^(.-)%s*%-%-") or line
-            nameOnly = nameOnly:match("^%s*(.-)%s*$")
+            nameOnly = nameOnly:match("^%s*(.-)%s*$") or ""
             if nameOnly:lower() == uname then
                 return true
             end
         end
         return false
     end
+
     return checkList(vip) or checkList(sat)
 end
 
--- small notification wrapper
 local function notify(title, text, duration)
     pcall(function()
         StarterGui:SetCore("SendNotification", {
-            Title = title or "LEXHOST",
+            Title = title or "Info",
             Text = text or "",
             Duration = duration or 4
         })
     end)
 end
 
--- add blur background
-local blur
-do
-    blur = Instance.new("BlurEffect")
-    blur.Name = "LEXHOST_Blur"
-    blur.Size = 18
-    blur.Parent = Lighting
-end
-
--- main GUI
+-- ============================
+-- BUILD GUI
+-- ============================
 local gui = Instance.new("ScreenGui")
-gui.Name = "LEXHOST_Load"
+gui.Name = "LEXHOSTLoader"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
--- container frame
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 360, 0, 230)
-frame.Position = UDim2.new(0.5, -180, 0.5, -115)
-frame.AnchorPoint = Vector2.new(0.5, 0.5)
-frame.BackgroundColor3 = Color3.fromRGB(18, 24, 34) -- very dark
-frame.BackgroundTransparency = 1
+frame.Size = UDim2.new(0, 360, 0, 220)
+frame.Position = UDim2.new(0.5, -180, 0.5, -110)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,25)
 frame.BorderSizePixel = 0
+frame.BackgroundTransparency = 1 -- fade-in
 local corner = Instance.new("UICorner", frame)
-corner.CornerRadius = UDim.new(0, 14)
-
--- neon stroke (border)
+corner.CornerRadius = UDim.new(0, 12)
 local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 2
-stroke.Color = Color3.fromRGB(0, 170, 255)
-stroke.Transparency = 0.15
 
--- subtle panel glow (ImageLabel used as glow layer)
-local glow = Instance.new("ImageLabel", frame)
-glow.Name = "Glow"
-glow.AnchorPoint = Vector2.new(0.5, 0.5)
-glow.Position = UDim2.new(0.5, 0, 0.5, 0)
-glow.Size = UDim2.new(1.15, 0, 1.15, 0)
-glow.BackgroundTransparency = 1
-glow.Image = "rbxassetid://243660447" -- generic soft gradient circle (works as subtle glow)
-glow.ImageTransparency = 0.9
-glow.ZIndex = 0
+-- Fade-in
+TweenService:Create(frame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
 
--- header / title
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 40)
-title.Position = UDim2.new(0, 0, 0, 6)
-title.BackgroundTransparency = 1
-title.Font = Enum.Font.GothamBlack
-title.Text = "LEXHOST"
-title.TextSize = 26
-title.TextColor3 = Color3.fromRGB(130, 220, 255)
-title.TextStrokeTransparency = 0.75
-title.ZIndex = 2
+-- Title "LEX HOST PROJECT" (di atas)
+local titleLabel = Instance.new("TextLabel", frame)
+titleLabel.Size = UDim2.new(1, -24, 0, 28)
+titleLabel.Position = UDim2.new(0, 12, 0, 8)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 18
+titleLabel.Text = "LEX HOST PROJECT"
+titleLabel.TextColor3 = Color3.fromRGB(220,220,255)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.TextTransparency = 1
+TweenService:Create(titleLabel, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
 
--- title glow stroke for pulsing
-local titleStroke = Instance.new("UIStroke", title)
-titleStroke.Thickness = 1.6
-titleStroke.Color = Color3.fromRGB(0, 170, 255)
-titleStroke.Transparency = 0.3
+-- tombol close (X) kanan atas
+local closeBtn = Instance.new("TextButton", frame)
+closeBtn.Size = UDim2.new(0, 32, 0, 28)
+closeBtn.Position = UDim2.new(1, -40, 0, 8)
+closeBtn.AnchorPoint = Vector2.new(0,0)
+closeBtn.BackgroundColor3 = Color3.fromRGB(180,60,60)
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 18
+closeBtn.TextColor3 = Color3.fromRGB(255,255,255)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0,6)
 
--- avatar
+closeBtn.MouseEnter:Connect(function()
+    pcall(function()
+        TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(220,80,80)}):Play()
+    end)
+end)
+closeBtn.MouseLeave:Connect(function()
+    pcall(function()
+        TweenService:Create(closeBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(180,60,60)}):Play()
+    end)
+end)
+
+-- avatar (kanan atas bawah title)
 local avatar = Instance.new("ImageLabel", frame)
-avatar.Size = UDim2.new(0, 72, 0, 72)
-avatar.Position = UDim2.new(0, 26, 0, 56)
+avatar.Size = UDim2.new(0, 64, 0, 64)
+avatar.Position = UDim2.new(0, 16, 0, 44)
 avatar.BackgroundTransparency = 1
-avatar.ZIndex = 2
-avatar.Image = "rbxassetid://112840507" -- fallback while fetching
-
--- avatar rounded
-local avtCorner = Instance.new("UICorner", avatar)
-avtCorner.CornerRadius = UDim.new(0, 12)
+avatar.Image = "rbxassetid://112840507" -- fallback
+task.spawn(function()
+    local ok, img = pcall(function()
+        return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100)
+    end)
+    if ok and img then avatar.Image = img end
+end)
 
 -- username
-local uname = Instance.new("TextLabel", frame)
-uname.Position = UDim2.new(0, 112, 0, 70)
-uname.Size = UDim2.new(1, -128, 0, 28)
-uname.BackgroundTransparency = 1
-uname.Font = Enum.Font.GothamBold
-uname.TextSize = 20
-uname.TextColor3 = Color3.fromRGB(220, 240, 255)
-uname.TextXAlignment = Enum.TextXAlignment.Left
-uname.ZIndex = 2
-uname.Text = player.Name
+local unameLabel = Instance.new("TextLabel", frame)
+unameLabel.Position = UDim2.new(0, 96, 0, 50)
+unameLabel.Size = UDim2.new(1, -110, 0, 26)
+unameLabel.BackgroundTransparency = 1
+unameLabel.Font = Enum.Font.GothamBold
+unameLabel.TextSize = 20
+unameLabel.TextColor3 = Color3.fromRGB(240,240,240)
+unameLabel.TextXAlignment = Enum.TextXAlignment.Left
+unameLabel.Text = player.Name
 
--- status
+-- status text
 local status = Instance.new("TextLabel", frame)
-status.Position = UDim2.new(0, 24, 0, 136)
-status.Size = UDim2.new(1, -48, 0, 22)
+status.Position = UDim2.new(0, 16, 0, 118)
+status.Size = UDim2.new(1, -32, 0, 26)
 status.BackgroundTransparency = 1
 status.Font = Enum.Font.Gotham
 status.TextSize = 14
-status.TextColor3 = Color3.fromRGB(170, 190, 210)
-status.Text = "Klik tombol Verifikasi untuk melanjutkan..."
-status.ZIndex = 2
+status.TextColor3 = Color3.fromRGB(200,200,200)
+status.Text = "Klik tombol verifikasi untuk lanjut..."
 
--- buttons container
-local btnRow = Instance.new("Frame", frame)
-btnRow.Size = UDim2.new(0.88, 0, 0, 40)
-btnRow.Position = UDim2.new(0.06, 0, 1, -54)
-btnRow.BackgroundTransparency = 1
-btnRow.ZIndex = 2
+-- tombol verify
+local verifyBtn = Instance.new("TextButton", frame)
+verifyBtn.Size = UDim2.new(0.62, 0, 0, 36)
+verifyBtn.Position = UDim2.new(0.19, 0, 1, -48)
+verifyBtn.Text = "Verifikasi"
+verifyBtn.Font = Enum.Font.GothamBold
+verifyBtn.TextSize = 16
+verifyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+verifyBtn.BackgroundColor3 = Color3.fromRGB(60, 170, 100)
+Instance.new("UICorner", verifyBtn).CornerRadius = UDim.new(0, 8)
 
--- button factory with glow & hover
-local function newBtn(parent, text, baseColor, size, pos)
-    local b = Instance.new("TextButton", parent)
-    b.Size = size
-    b.Position = pos
-    b.Text = text
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 14
-    b.TextColor3 = Color3.fromRGB(230,230,230)
-    b.BackgroundColor3 = baseColor
-    b.AutoButtonColor = false
-    local c = Instance.new("UICorner", b); c.CornerRadius = UDim.new(0,8)
+-- tombol lain (placeholder cepat copy link)
+local tiktokBtn = Instance.new("TextButton", frame)
+tiktokBtn.Size = UDim2.new(0.13, 0, 0, 28)
+tiktokBtn.Position = UDim2.new(0.02, 0, 1, -40)
+tiktokBtn.Text = "TikTok"
+tiktokBtn.Font = Enum.Font.GothamBold
+tiktokBtn.TextSize = 12
+tiktokBtn.TextColor3 = Color3.fromRGB(255,255,255)
+tiktokBtn.BackgroundColor3 = Color3.fromRGB(50,50,60)
+Instance.new("UICorner", tiktokBtn).CornerRadius = UDim.new(0,6)
 
-    -- glow layer (ImageLabel)
-    local g = Instance.new("ImageLabel", b)
-    g.Name = "Glow"
-    g.AnchorPoint = Vector2.new(0.5, 0.5)
-    g.Position = UDim2.new(0.5, 0, 0.5, 0)
-    g.Size = UDim2.new(1.2, 0, 1.6, 0)
-    g.BackgroundTransparency = 1
-    g.Image = "rbxassetid://243660447"
-    g.ImageTransparency = 0.95
-    g.ZIndex = 0
+local discordBtn = Instance.new("TextButton", frame)
+discordBtn.Size = UDim2.new(0.13, 0, 0, 28)
+discordBtn.Position = UDim2.new(0.86, 0, 1, -40)
+discordBtn.Text = "Discord"
+discordBtn.Font = Enum.Font.GothamBold
+discordBtn.TextSize = 12
+discordBtn.TextColor3 = Color3.fromRGB(255,255,255)
+discordBtn.BackgroundColor3 = Color3.fromRGB(48,60,110)
+Instance.new("UICorner", discordBtn).CornerRadius = UDim.new(0,6)
 
-    -- stroke
-    local bs = Instance.new("UIStroke", b)
-    bs.Thickness = 1.4
-    bs.Color = Color3.fromRGB(0, 150, 220)
-    bs.Transparency = 0.35
+-- RGB border anim
+task.spawn(function()
+    while frame.Parent do
+        for h = 0, 255 do
+            if not frame.Parent then break end
+            stroke.Color = Color3.fromHSV(h/255, 0.85, 0.95)
+            task.wait(0.02)
+        end
+    end
+end)
 
-    -- hover animations
-    b.MouseEnter:Connect(function()
-        TweenService:Create(b, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {BackgroundColor3 = baseColor + Color3.new(0.06,0.06,0.06)}):Play()
-        TweenService:Create(g, TweenInfo.new(0.25), {ImageTransparency = 0.6}):Play()
-    end)
-    b.MouseLeave:Connect(function()
-        TweenService:Create(b, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {BackgroundColor3 = baseColor}):Play()
-        TweenService:Create(g, TweenInfo.new(0.25), {ImageTransparency = 0.95}):Play()
-    end)
-    return b
+-- helper pulse
+local function pulse(obj, amt, times)
+    amt = amt or 6
+    times = times or 3
+    for i = 1, times do
+        local orig = obj.Position
+        pcall(function() TweenService:Create(obj, TweenInfo.new(0.05), {Position = orig + UDim2.new(0, amt, 0, 0)}):Play() end)
+        task.wait(0.05)
+        pcall(function() TweenService:Create(obj, TweenInfo.new(0.05), {Position = orig}):Play() end)
+        task.wait(0.05)
+    end
 end
 
-local tiktokBtn = newBtn(btnRow, "TikTok", Color3.fromRGB(40, 40, 60), UDim2.new(0.18, 0, 1, 0), UDim2.new(0, 0, 0, 0))
-local verifyBtn = newBtn(btnRow, "Verifikasi", Color3.fromRGB(0, 140, 230), UDim2.new(0.56, 0, 1, 0), UDim2.new(0.21, 0, 0, 0))
-local discordBtn = newBtn(btnRow, "Discord", Color3.fromRGB(34, 45, 80), UDim2.new(0.18, 0, 1, 0), UDim2.new(0.79, 0, 0, 0))
+-- close button logic: bersihkan gui + blur + efek
+closeBtn.MouseButton1Click:Connect(function()
+    -- hapus blur jika ada
+    local b = Lighting:FindFirstChild("LEXHOST_Blur")
+    if b then
+        pcall(function() TweenService:Create(b, TweenInfo.new(0.3), {Size = 0}):Play() end)
+        task.delay(0.35, function() if b and b.Parent then b:Destroy() end end)
+    end
+    -- hapus any verified GUI
+    local vg = player.PlayerGui:FindFirstChild("LEXHOST_VerifiedFX")
+    if vg then vg:Destroy() end
+    if gui and gui.Parent then gui:Destroy() end
+end)
 
--- close button (top-right)
-local closeBtn = Instance.new("TextButton", frame)
-closeBtn.Size = UDim2.new(0, 30, 0, 30)
-closeBtn.Position = UDim2.new(1, -40, 0, 8)
-closeBtn.BackgroundColor3 = Color3.fromRGB(205, 60, 60)
-closeBtn.Text = "✕"
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 16
-closeBtn.TextColor3 = Color3.fromRGB(255,255,255)
-closeBtn.ZIndex = 3
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0,8)
-
--- avatar fetch & fade-in
-task.spawn(function()
-    local ok, img = pcall(function()
-        return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420)
-    end)
-    if ok and img then
-        avatar.Image = img
+-- Cinematic FX ketika sukses (blur tetap ada)
+local function playCinematicFX()
+    -- pastikan blur sudah ada dan halus (size=8)
+    local blur = Lighting:FindFirstChild("LEXHOST_Blur")
+    if not blur then
+        blur = Instance.new("BlurEffect")
+        blur.Name = "LEXHOST_Blur"
+        blur.Size = 0
+        blur.Parent = Lighting
+        TweenService:Create(blur, TweenInfo.new(0.35), {Size = 8}):Play()
     else
-        avatar.Image = "rbxassetid://112840507"
+        pcall(function() TweenService:Create(blur, TweenInfo.new(0.25), {Size = 8}):Play() end)
     end
-    avatar.ImageTransparency = 1
-    TweenService:Create(avatar, TweenInfo.new(0.45, Enum.EasingStyle.Quad), {ImageTransparency = 0}):Play()
-end)
 
--- title pulsing glow (tint)
-task.spawn(function()
-    while frame.Parent do
-        TweenService:Create(titleStroke, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0}):Play()
-        TweenService:Create(glow, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.85}):Play()
-        task.wait(1.2)
-        TweenService:Create(titleStroke, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.6}):Play()
-        TweenService:Create(glow, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {ImageTransparency = 0.95}):Play()
-        task.wait(1.2)
+    -- part & particle di depan kamera
+    local part = Instance.new("Part")
+    part.Name = "LEXHOST_ParticlePart"
+    part.Anchored = true
+    part.CanCollide = false
+    part.Transparency = 1
+    part.Size = Vector3.new(1,1,1)
+    part.CFrame = cam.CFrame * CFrame.new(0, 0, -6)
+    part.Parent = workspace
+    Debris:AddItem(part, 6)
+
+    local emitter = Instance.new("ParticleEmitter", part)
+    emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    emitter.Rate = 80
+    emitter.Lifetime = NumberRange.new(0.9, 2.4)
+    emitter.Speed = NumberRange.new(0.8, 3.4)
+    emitter.Rotation = NumberRange.new(0, 360)
+    emitter.RotSpeed = NumberRange.new(-90, 90)
+    emitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.42), NumberSequenceKeypoint.new(1, 0.88)})
+    emitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.06), NumberSequenceKeypoint.new(1, 1)})
+    emitter.LightEmission = 0.85
+    emitter.LockedToPart = true
+    emitter.VelocitySpread = 180
+    emitter.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 80, 255)),
+        ColorSequenceKeypoint.new(0.45, Color3.fromRGB(80, 200, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255,160,80))
+    }
+    emitter.Enabled = true
+    task.delay(3.6, function() if emitter and emitter.Parent then emitter.Enabled = false end end)
+
+    -- fullscreen verified GUI
+    local verifiedGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+    verifiedGui.Name = "LEXHOST_VerifiedFX"
+
+    local holder = Instance.new("Frame", verifiedGui)
+    holder.AnchorPoint = Vector2.new(0.5,0.5)
+    holder.Position = UDim2.new(0.5,0,0.5,0)
+    holder.Size = UDim2.new(0.12,0,0,60)
+    holder.BackgroundTransparency = 1
+
+    local bigText = Instance.new("TextLabel", holder)
+    bigText.Size = UDim2.new(1,0,1,0)
+    bigText.Position = UDim2.new(0,0,0,0)
+    bigText.BackgroundTransparency = 1
+    bigText.Text = "✅ LEXHOST VERIFIED"
+    bigText.Font = Enum.Font.GothamBlack
+    bigText.TextSize = 56
+    bigText.TextTransparency = 1
+    bigText.TextStrokeTransparency = 0.6
+    bigText.TextColor3 = Color3.fromRGB(255,255,255)
+    bigText.TextScaled = true
+
+    -- animate
+    TweenService:Create(holder, TweenInfo.new(0.8, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {Size = UDim2.new(0.7,0,0,160)}):Play()
+    TweenService:Create(bigText, TweenInfo.new(0.6), {TextTransparency = 0}):Play()
+
+    local cycle = true
+    task.spawn(function()
+        while cycle and bigText.Parent do
+            for h = 0,255 do
+                if not (cycle and bigText.Parent) then break end
+                bigText.TextColor3 = Color3.fromHSV(h/255, 0.95, 1)
+                task.wait(0.014)
+            end
+        end
+    end)
+
+    -- show then fade
+    task.wait(3.6)
+    cycle = false
+    pcall(function()
+        TweenService:Create(bigText, TweenInfo.new(0.9), {TextTransparency = 1}):Play()
+        TweenService:Create(holder, TweenInfo.new(0.9), {Size = UDim2.new(0.05,0,0,40)}):Play()
+        if Lighting:FindFirstChild("LEXHOST_Blur") then
+            TweenService:Create(Lighting:FindFirstChild("LEXHOST_Blur"), TweenInfo.new(0.9), {Size = 0}):Play()
+        end
+    end)
+    task.delay(1.1, function()
+        if verifiedGui and verifiedGui.Parent then verifiedGui:Destroy() end
+        if Lighting:FindFirstChild("LEXHOST_Blur") then Lighting:FindFirstChild("LEXHOST_Blur"):Destroy() end
+        if emitter and emitter.Parent then emitter:Destroy() end
+        if part and part.Parent then part:Destroy() end
+    end)
+end
+
+-- doVerify (blur muncul langsung halus, verifikasi jalan normal)
+local function doVerify()
+    status.Text = "Memeriksa..."
+    verifyBtn.Active = false
+
+    -- buat blur halus (size=8)
+    local blur = Lighting:FindFirstChild("LEXHOST_Blur")
+    if not blur then
+        blur = Instance.new("BlurEffect")
+        blur.Name = "LEXHOST_Blur"
+        blur.Size = 0
+        blur.Parent = Lighting
     end
-end)
+    TweenService:Create(blur, TweenInfo.new(0.35), {Size = 8}):Play()
 
--- border RGB animation (cyber blue subtle)
-task.spawn(function()
-    local h = 0
-    while frame.Parent do
-        h = (h + 0.006) % 1
-        local c = Color3.fromHSV(0.55 + 0.05*math.sin(h*6.28), 0.8, 0.95)
-        stroke.Color = c
-        task.wait(0.03)
+    -- jalankan verifikasi (pcall untuk tangani error)
+    local ok, result = pcall(function()
+        return isVerified(player.Name)
+    end)
+
+    verifyBtn.Active = true
+
+    if not ok then
+        status.Text = "⚠️ Error saat verifikasi."
+        notify("LEXHOST", "Gagal memeriksa daftar (error).", 4)
+        pulse(frame, 6, 3)
+        -- hilangkan blur
+        pcall(function() TweenService:Create(blur, TweenInfo.new(0.5), {Size = 0}):Play() end)
+        task.delay(0.6, function() if blur and blur.Parent then blur:Destroy() end end)
+        return
     end
-end)
 
--- button clipboard helper
+    if result then
+        status.Text = "✅ KAMU TERDAFTAR"
+        _G.WataX_Replay = true
+
+        -- fade-out GUI kecil
+        pcall(function()
+            TweenService:Create(frame, TweenInfo.new(0.45), {BackgroundTransparency = 1}):Play()
+            TweenService:Create(status, TweenInfo.new(0.45), {TextTransparency = 1}):Play()
+            TweenService:Create(unameLabel, TweenInfo.new(0.45), {TextTransparency = 1}):Play()
+            TweenService:Create(verifyBtn, TweenInfo.new(0.45), {TextTransparency = 1}):Play()
+        end)
+        task.wait(0.55)
+        if frame and frame.Parent then frame.Visible = false end
+
+        -- play cinematic fx then load scripts
+        playCinematicFX()
+
+        for _,url in ipairs(successUrls) do
+            pcall(function()
+                local s = game:HttpGet(url, true)
+                if s then
+                    local ok2,err = pcall(function() loadstring(s)() end)
+                    if not ok2 then warn("Gagal load:", url, err) end
+                end
+            end)
+        end
+
+        if gui and gui.Parent then gui:Destroy() end
+    else
+        status.Text = "❌ KAMU TIDAK TERDAFTAR"
+        _G.WataX_Replay = false
+        pulse(frame, -6, 3)
+        TweenService:Create(frame, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(200,50,50)}):Play()
+        task.delay(0.6, function()
+            if frame and frame.Parent then
+                TweenService:Create(frame, TweenInfo.new(0.6), {BackgroundColor3 = Color3.fromRGB(20,20,25)}):Play()
+            end
+        end)
+        notify("LEXHOST", "❌ Kamu belum terdaftar untuk menggunakan fitur ini.", 4)
+        -- hilangkan blur
+        pcall(function() TweenService:Create(blur, TweenInfo.new(0.6), {Size = 0}):Play() end)
+        task.delay(0.7, function() if blur and blur.Parent then blur:Destroy() end end)
+    end
+end
+
+verifyBtn.MouseButton1Click:Connect(doVerify)
+
+-- copy link buttons (opsional)
+local TIKTOK_LINK = "https://www.tiktok.com/@wataxsc"
+local DISCORD_LINK = "https://discord.gg/tfNqRQsqHK"
 local function copyToClipboard(link)
     if setclipboard then
         pcall(setclipboard, link)
         notify("LEXHOST", "Link disalin ke clipboard", 3)
         return true
     else
-        notify("LEXHOST", "Executor tidak mendukung clipboard", 3)
-        print("Manual link:", link)
+        notify("LEXHOST", "Fitur salin tidak tersedia di executor ini", 4)
+        print("Link (copy manual):", link)
         return false
     end
 end
-
--- button actions
 tiktokBtn.MouseButton1Click:Connect(function()
     local ok = copyToClipboard(TIKTOK_LINK)
-    status.Text = ok and "✅ Link TikTok disalin!" or "⚠️ Gagal menyalin. Cek console."
-    task.delay(2, function() if status and status.Parent then status.Text = "Klik tombol Verifikasi untuk melanjutkan..." end end)
+    status.Text = ok and "✅ Link TikTok disalin!" or "⚠️ Gagal menyalin TikTok."
+    task.delay(2, function() if status and status.Parent then status.Text = "Klik tombol verifikasi untuk lanjut..." end end)
 end)
-
 discordBtn.MouseButton1Click:Connect(function()
     local ok = copyToClipboard(DISCORD_LINK)
-    status.Text = ok and "✅ Link Discord disalin!" or "⚠️ Gagal menyalin. Cek console."
-    task.delay(2, function() if status and status.Parent then status.Text = "Klik tombol Verifikasi untuk melanjutkan..." end end)
-end)
-
--- close behaviour
-closeBtn.MouseButton1Click:Connect(function()
-    TweenService:Create(frame, TweenInfo.new(0.28, Enum.EasingStyle.Quad), {BackgroundTransparency = 1}):Play()
-    if blur and blur.Parent then blur:Destroy() end
-    task.wait(0.28)
-    gui:Destroy()
-end)
-
--- verification routine (kept as original logic)
-local function doVerify()
-    status.Text = "🔍 Memeriksa daftar pengguna..."
-    verifyBtn.Active = false
-
-    local ok, result = pcall(function()
-        return isVerified(player.Name)
-    end)
-    verifyBtn.Active = true
-
-    if not ok then
-        status.Text = "⚠️ Error saat memeriksa."
-        notify("LEXHOST", "Gagal memeriksa daftar (error).", 4)
-        return
-    end
-
-    if result then
-        status.Text = "✅ Terdaftar — memuat modul..."
-        _G.LEXHOST_Access = true
-        task.wait(0.8)
-
-        for _, url in ipairs(successUrls) do
-            pcall(function()
-                loadstring(game:HttpGet(url))()
-            end)
-        end
-
-        TweenService:Create(frame, TweenInfo.new(0.45), {BackgroundTransparency = 1}):Play()
-        task.wait(0.45)
-        if blur and blur.Parent then blur:Destroy() end
-        gui:Destroy()
-    else
-        status.Text = "❌ Kamu belum terdaftar di LEXHOST."
-        _G.LEXHOST_Access = false
-        notify("LEXHOST", "Akses ditolak — belum terdaftar.", 4)
-    end
-end
-
-verifyBtn.MouseButton1Click:Connect(doVerify)
-
--- subtle entrance animation for entire frame + glow pop
-frame.BackgroundTransparency = 1
-frame.Size = UDim2.new(0, 340, 0, 220)
-frame.Position = UDim2.new(0.5, -180, 0.5, -135)
-TweenService:Create(frame, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-    Position = UDim2.new(0.5, -180, 0.5, -115),
-    BackgroundTransparency = 0
-}):Play()
-TweenService:Create(glow, TweenInfo.new(0.6, Enum.EasingStyle.Quad), {ImageTransparency = 0.92}):Play()
-
--- Particles (small floating dots) — lightweight, parented to gui, random subtle movement
-for i = 1, 18 do
-    local p = Instance.new("Frame", gui)
-    p.Size = UDim2.new(0, math.random(2,4), 0, math.random(2,4))
-    p.BackgroundTransparency = 0.25
-    p.BorderSizePixel = 0
-    p.ZIndex = 1
-    p.Position = UDim2.new(math.random(), 0, math.random(), 0)
-    p.BackgroundColor3 = Color3.fromHSV(0.55 + math.random()*0.05, 0.7, 0.9)
-    task.spawn(function()
-        while p.Parent do
-            local nx = math.clamp(math.random(), 0.02, 0.98)
-            local ny = math.clamp(math.random(), 0.02, 0.98)
-            TweenService:Create(p, TweenInfo.new(6 + math.random()*4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-                Position = UDim2.new(nx, 0, ny, 0),
-                BackgroundTransparency = 0.4 + math.random()*0.4
-            }):Play()
-            task.wait(4 + math.random()*5)
-        end
-    end)
-end
-
--- Cleanup if player leaves (safe)
-player.AncestryChanged:Connect(function()
-    if not player:IsDescendantOf(game) then
-        if blur and blur.Parent then blur:Destroy() end
-        if gui and gui.Parent then gui:Destroy() end
-    end
+    status.Text = ok and "✅ Link Discord disalin!" or "⚠️ Gagal menyalin Discord."
+    task.delay(2, function() if status and status.Parent then status.Text = "Klik tombol verifikasi untuk lanjut..." end end)
 end)
